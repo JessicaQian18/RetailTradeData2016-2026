@@ -1,0 +1,167 @@
+---
+title: "Assignment4"
+author: "Jessica Qian"
+date: "2026-10-02"
+output: html_document
+---
+
+```{r}
+library(readxl)
+library(fpp2)
+getwd()
+retail <- read_excel("/Users/jessicaqian/Downloads/RetailTradeData.xlsx",sheet = "Monthly")
+head(retail)
+names(retail)
+str(retail)
+
+attributes(retail)
+plot(retail)
+Acf(retail)
+
+names(retail)[2] <- "Retail_Sales"
+retail_ts <- ts(retail$Retail_Sales,
+                start = c(2016, 7),
+                frequency = 12)
+
+retail_ts
+attributes(retail_ts)
+
+plot(retail_ts,
+     main = "Monthly U.S. Retail Trade Sales",
+     xlab = "Year",
+     ylab = "Millions of Dollars")
+
+Acf(retail_ts)
+```
+
+### Take Mean of all available history
+```{r}
+mean_forecast <- meanf(retail_ts, 5)
+plot(mean_forecast)
+```
+
+### The mean forecast uses the average of all historical retail sales as the forecast for future periods. Because the chart shows a clear upward trend, this model underestimates future sales and does not capture seasonality well.
+
+# Naive Method
+```{r}
+naive_forecast <- naive(retail_ts,5) 
+plot(naive_forecast)
+```
+
+### The naive model uses the most recent observed value as the forecast for all future periods. It follows the latest sales level but does not include trend or recurring seasonal patterns.
+
+# Random Walk
+```{r}
+rwf_forecast <- rwf(retail_ts,5, drift=TRUE)
+plot(rwf_forecast)
+```
+
+### This model starts from the most recent value and extends the overall historical trend forward. The forecast increases over time, but it doesn't consider the seasonal ups and downs in the retail data.
+
+# Seasonal Naive
+```{r}
+snaive_forecast <- snaive(retail_ts,5)
+plot(snaive_forecast)
+```
+### The seasonal naive model uses the value from the same period in the previous year to forecast each future month. This allows it to recreate the seasonal pattern shown in the retail sales data.
+
+# Moving Averages
+```{r}
+MA5_forecast <- ma(retail_ts,order=5)
+plot(MA5_forecast)
+```
+### The 5-period moving average smooths the retail sales data using the most recent five observations. It follows changes in the series more quickly and reduces short-term fluctuations while still showing the overall upward trend.
+
+```{r}
+MA9_forecast <- ma(retail_ts,order=9)
+plot(MA9_forecast)
+```
+### The 9-period moving average uses a larger window, so the series is smoother than MA(5). It shows the long-term upward trend more clearly but reacts more slowly to sudden changes.
+
+# Decomposition
+```{r}
+ets_forecast <- ets(retail_ts)
+ets_forecast
+plot(ets_forecast)
+attributes(ets_forecast)
+ets_forecast$mse
+```
+### The ETS model selected an additive error, additive trend, and additive seasonality trend. The decomposition shows that retail sales have a rising level, a positive trend, and a repeating seasonal pattern.
+
+# HoltWinters
+```{r}
+HW_forecast <- HoltWinters(retail_ts)
+plot(HW_forecast)
+HW_model <- HoltWinters(retail_ts)
+HW_forecast <- forecast(HW_model, h = 5)
+SSE_Simple <- HoltWinters(retail_ts,beta=FALSE,gamma=FALSE)
+attributes(SSE_Simple)
+plot(SSE_Simple)
+SSE_Simple$SSE
+head(SSE_Simple$fitted)
+```
+
+### The Holt-Winters model estimates the level, trend, and seasonal components of the retail sales series. The fitted values closely follow the observed values, showing that the model captures both the upward trend and recurring seasonal changes reasonably well.
+
+# Plot all in a single chart
+```{r}
+plot(mean_forecast,
+     main = "Comparison of Retail Sales Forecasting Models",
+     xlab = "Year",
+     ylab = "Millions of Dollars")
+
+lines(naive_forecast$mean,col="orange")
+lines(rwf_forecast$mean,col="purple")
+lines(snaive_forecast$mean,col="maroon")
+lines(MA5_forecast,col="black")
+lines(MA9_forecast,col="green")
+lines(ets_forecast$mean, col = "yellow")
+lines(HW_forecast$mean, col = "pink")
+
+legend("topleft",
+       legend = c("Mean","Naive","Random Walk with Drift","Seasonal Naive","MA(5)","MA(9)",
+                  "ETS","Holt-Winters"),
+       col = c("blue","orange","purple","maroon","black","green","yellow","pink"),
+       lty = 1,cex = 0.7)
+
+
+forecast_ets_1 <- forecast.ets(ets_forecast, h=5)
+plot(forecast_ets_1)
+forecast_ets_2 <- forecast(ets_forecast, h=5)
+plot(forecast_ets_2)
+```
+# Forecast Accuracy
+```{r}
+accuracy(mean_forecast)
+accuracy(naive_forecast)
+accuracy(rwf_forecast)
+accuracy(snaive_forecast)
+accuracy(ets_forecast)
+accuracy(HW_forecast)
+```
+
+# Choosing RMSE as the accuracy measure
+```{r}
+accuracy(mean_forecast)[1, "RMSE"]
+accuracy(naive_forecast)[1, "RMSE"]
+accuracy(rwf_forecast)[1, "RMSE"]
+accuracy(snaive_forecast)[1, "RMSE"]
+accuracy(ets_forecast)[1, "RMSE"]
+accuracy(HW_forecast)[1, "RMSE"]
+```
+
+### I chose to use RMSE to compare the accuracy of the forecasting models. A lower RMSE implies that the model’s predictions are generally closer to the actual observed values. Among all the models, the ETS model had the lowest RMSE of 9,898.29, Holt-Winters came in second with an RMSE of 11,389.55. Therefore, based on RMSE, ETS was the best-performing model for this retail sales time series.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
